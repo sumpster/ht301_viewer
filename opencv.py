@@ -26,8 +26,10 @@ class FrameProcessor:
 
         if scale >= 2:
             self.font = cv2.FONT_HERSHEY_DUPLEX
+            self.font_scale = 2
         else:
             self.font = cv2.FONT_HERSHEY_PLAIN
+            self.font_scale = 1
 
 
     def getWidth(self, withLegend):
@@ -106,28 +108,33 @@ class FrameProcessor:
         return (scale * x, scale * y)
 
 
-    def _drawMarker(self, img, point, T, font, color = (0,0,0)):
-        d1, d2 = 2, 5
+    def _drawMarker(self, img, point, T):
+        draw_col, outline_col = (255,255,255), (0,0,0)
+        d1, d2 = 3 * self.font_scale, 6 * self.font_scale
         dsize = 1
         (x, y) = point
-        t = '%.1fC' % T
-        cv2.line(img,(x+d1, y),(x+d2,y),color, dsize)
-        cv2.line(img,(x-d1, y),(x-d2,y),color, dsize)
-        cv2.line(img,(x, y+d1),(x,y+d2),color, dsize)
-        cv2.line(img,(x, y-d1),(x,y-d2),color, dsize)
+        for (color, width) in [(outline_col, 3 * dsize * self.font_scale), (draw_col, dsize * self.font_scale)]:
+            cv2.line(img, (x+d1, y), (x+d2,y), color, width)
+            cv2.line(img, (x-d1, y), (x-d2,y), color, width)
+            cv2.line(img, (x, y+d1), (x,y+d2), color, width)
+            cv2.line(img, (x, y-d1), (x,y-d2), color, width)
 
-        text_size = cv2.getTextSize(t, font, 1, dsize)[0]
+        t = '%.1fC' % T
+        text_size = cv2.getTextSize(t, self.font, 1, dsize)[0]
         tx, ty = x+d1, y+d1+text_size[1]
         if tx + text_size[0] > img.shape[1]: tx = x-d1-text_size[0]
         if ty                > img.shape[0]: ty = y-d1
 
-        cv2.putText(img, t, (tx,ty), font, 1, color, dsize, cv2.LINE_8)
+        for offset in (-self.font_scale, self.font_scale):
+            cv2.putText(img, t, (tx + offset, ty), self.font, 1, outline_col, dsize, cv2.LINE_8)
+            cv2.putText(img, t, (tx, ty + offset), self.font, 1, outline_col, dsize, cv2.LINE_8)
+        cv2.putText(img, t, (tx,ty), self.font, 1, draw_col, dsize, cv2.LINE_8)
 
 
     def addMarkers(self, frame, info):
-        self._drawMarker(frame, self._scalePoint(info['Tmin_point'], self.scale), info['Tmin_C'], self.font, (55,0,0))
-        self._drawMarker(frame, self._scalePoint(info['Tmax_point'], self.scale), info['Tmax_C'], self.font, (0,0,85))
-        self._drawMarker(frame, self._scalePoint(info['Tcenter_point'], self.scale), info['Tcenter_C'], self.font, (0,255,255))
+        self._drawMarker(frame, self._scalePoint(info['Tmin_point'], self.scale), info['Tmin_C'])
+        self._drawMarker(frame, self._scalePoint(info['Tmax_point'], self.scale), info['Tmax_C'])
+        self._drawMarker(frame, self._scalePoint(info['Tcenter_point'], self.scale), info['Tcenter_C'])
         return frame
 
 
