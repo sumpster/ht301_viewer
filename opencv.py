@@ -140,18 +140,22 @@ class FrameProcessor:
 
 def main():
     parser = ArgumentParser()
+    parser.add_argument("-d", "--device",
+        dest="device", default=None,
+        help="video device to use (default: auto)"
+    )
     parser.add_argument("-c", "--colormap",
         dest="colormap", default="inferno",
         type=lambda s:getattr(cv2, "COLORMAP_" + s.upper()),
-        help="color map used for thermal gradient (bone, inferno, jet, turbo, ...)"
+        help="cv2 color map used for thermal gradient (default: inferno)"
     )
     parser.add_argument("-s", "--scale",
         dest="scale", default=2, choices=[1, 2, 3], type=int,
-        help="scaling factor for video size (default 2)"
+        help="scaling factor for video size (default: 2)"
     )
     parser.add_argument("-r", "--range",
         dest="range",  type=int, nargs=2, metavar=('FROM', 'TO'),
-        help="specify visualized temperature range (default auto)"
+        help="specify visualized temperature range (default: auto)"
     )
     parser.add_argument("-nl", "--no-legend",
         action="store_false", dest="legend", default=True,
@@ -163,7 +167,7 @@ def main():
     )
     args = parser.parse_args()
 
-    with ht301_hacklib.HT301() as cap:
+    with ht301_hacklib.HT301(args.device) as cap:
         processor = FrameProcessor(cap.FRAME_WIDTH, cap.FRAME_HEIGHT, args.scale, args.colormap, args.range)
         try:
             window_name = 'HT301'
