@@ -113,7 +113,7 @@ class FrameProcessor:
         d1, d2 = 3 * self.font_scale, 6 * self.font_scale
         dsize = 1
         (x, y) = point
-        for (color, width) in [(outline_col, 3 * dsize * self.font_scale), (draw_col, dsize * self.font_scale)]:
+        for (color, width) in [(outline_col, 3 * dsize * self.font_scale - 1), (draw_col, dsize * self.font_scale)]:
             cv2.line(img, (x+d1, y), (x+d2,y), color, width)
             cv2.line(img, (x-d1, y), (x-d2,y), color, width)
             cv2.line(img, (x, y+d1), (x,y+d2), color, width)
