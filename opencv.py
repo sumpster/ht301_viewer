@@ -6,7 +6,6 @@ import numpy as np
 import cv2
 
 import ht301_hacklib
-import utils
 
 class FrameProcessor:
     def __init__(self, width, height, scale, color_map, temp_range):
@@ -78,6 +77,18 @@ class FrameProcessor:
             self.gradient[index + self.text_vspace][y_start:y_end] = color
 
 
+    def _drawTemperatureCentered(self, img, point, dims, T, font, color = (0,0,0)):
+        (x, y) = point
+        (width, height) = dims
+        t = f"{round(T)}C"
+        dsize = 1
+
+        (text_length, text_height) = cv2.getTextSize(t, font, 1, dsize)[0]
+        text_x = x + round((width - text_length) / 2)
+        text_y = y + height - round((height - text_height) / 2)
+        cv2.putText(img, t, (text_x, text_y), font, 1, color, dsize, cv2.LINE_8)
+
+
     def addLegend(self, frame, info):
         if not hasattr(self, "gradient"):
             self._generateGradient()
@@ -85,71 +96,96 @@ class FrameProcessor:
         legend = np.copy(self.gradient)
         max_temp = self.max_temp if self.max_temp != None else info['Tmax_C']
         min_temp = self.min_temp if self.min_temp != None else info['Tmin_C']
-        utils.drawTemperatureCentered(legend, (0, 0), (self.legend_width, self.text_vspace), max_temp, self.font, (255,255,255))
-        utils.drawTemperatureCentered(legend, (0, self.height - self.text_vspace), (self.legend_width, self.text_vspace), min_temp, self.font, (255,255,255))
+        self._drawTemperatureCentered(legend, (0, 0), (self.legend_width, self.text_vspace), max_temp, self.font, (255,255,255))
+        self._drawTemperatureCentered(legend, (0, self.height - self.text_vspace), (self.legend_width, self.text_vspace), min_temp, self.font, (255,255,255))
         return np.concatenate((frame, legend), axis=1)
 
 
+    def _scalePoint(self, point, scale):
+        (x, y) = point
+        return (scale * x, scale * y)
+
+
+    def _drawMarker(self, img, point, T, font, color = (0,0,0)):
+        d1, d2 = 2, 5
+        dsize = 1
+        (x, y) = point
+        t = '%.1fC' % T
+        cv2.line(img,(x+d1, y),(x+d2,y),color, dsize)
+        cv2.line(img,(x-d1, y),(x-d2,y),color, dsize)
+        cv2.line(img,(x, y+d1),(x,y+d2),color, dsize)
+        cv2.line(img,(x, y-d1),(x,y-d2),color, dsize)
+
+        text_size = cv2.getTextSize(t, font, 1, dsize)[0]
+        tx, ty = x+d1, y+d1+text_size[1]
+        if tx + text_size[0] > img.shape[1]: tx = x-d1-text_size[0]
+        if ty                > img.shape[0]: ty = y-d1
+
+        cv2.putText(img, t, (tx,ty), font, 1, color, dsize, cv2.LINE_8)
+
+
     def addMarkers(self, frame, info):
-        utils.drawTemperature(frame, utils.scalePoint(info['Tmin_point'], self.scale), info['Tmin_C'], self.font, (55,0,0))
-        utils.drawTemperature(frame, utils.scalePoint(info['Tmax_point'], self.scale), info['Tmax_C'], self.font, (0,0,85))
-        utils.drawTemperature(frame, utils.scalePoint(info['Tcenter_point'], self.scale), info['Tcenter_C'], self.font, (0,255,255))
+        self._drawMarker(frame, self._scalePoint(info['Tmin_point'], self.scale), info['Tmin_C'], self.font, (55,0,0))
+        self._drawMarker(frame, self._scalePoint(info['Tmax_point'], self.scale), info['Tmax_C'], self.font, (0,0,85))
+        self._drawMarker(frame, self._scalePoint(info['Tcenter_point'], self.scale), info['Tcenter_C'], self.font, (0,255,255))
         return frame
 
 
+def main():
+    parser = ArgumentParser()
+    parser.add_argument("-c", "--colormap",
+        dest="colormap", default="inferno",
+        type=lambda s:getattr(cv2, "COLORMAP_" + s.upper()),
+        help="color map used for thermal gradient (bone, inferno, jet, turbo, ...)"
+    )
+    parser.add_argument("-s", "--scale",
+        dest="scale", default=2, choices=[1, 2, 3], type=int,
+        help="scaling factor for video size (default 2)"
+    )
+    parser.add_argument("-r", "--range",
+        dest="range",  type=int, nargs=2, metavar=('FROM', 'TO'),
+        help="specify visualized temperature range (default auto)"
+    )
+    parser.add_argument("-nl", "--no-legend",
+        action="store_false", dest="legend", default=True,
+        help="hide color map legend"
+    )
+    parser.add_argument("-nm", "--no-markers",
+        action="store_false", dest="markers", default=True,
+        help="hide min/max/center temperature markers"
+    )
+    args = parser.parse_args()
 
-parser = ArgumentParser()
-parser.add_argument("-c", "--colormap",
-    dest="colormap", default="inferno",
-    type=lambda s:getattr(cv2, "COLORMAP_" + s.upper()),
-    help="color map used for thermal gradient (bone, inferno, jet, turbo, ...)"
-)
-parser.add_argument("-s", "--scale",
-    dest="scale", default=2, choices=[1, 2, 3], type=int,
-    help="scaling factor for video size (default 2)"
-)
-parser.add_argument("-r", "--range",
-    dest="range",  type=int, nargs=2, metavar=('FROM', 'TO'),
-    help="specify visualized temperature range (default auto)"
-)
-parser.add_argument("-nl", "--no-legend",
-    action="store_false", dest="legend", default=True,
-    help="hide color map legend"
-)
-parser.add_argument("-nm", "--no-markers",
-    action="store_false", dest="markers", default=True,
-    help="hide min/max/center temperature markers"
-)
-args = parser.parse_args()
+    with ht301_hacklib.HT301() as cap:
+        processor = FrameProcessor(cap.FRAME_WIDTH, cap.FRAME_HEIGHT, args.scale, args.colormap, args.range)
+        try:
+            window_name = 'HT301'
+            cv2.namedWindow(window_name, cv2.WINDOW_KEEPRATIO)
+            cv2.resizeWindow(window_name, processor.getWidth(args.legend), processor.getHeight())
 
-print(args)
+            while(True):
+                ret, frame = cap.read()
+                info, lut = cap.info()
 
-with ht301_hacklib.HT301() as cap:
-    processor = FrameProcessor(cap.FRAME_WIDTH, cap.FRAME_HEIGHT, args.scale, args.colormap, args.range)
-    try:
-        window_name = 'HT301'
-        cv2.namedWindow(window_name, cv2.WINDOW_KEEPRATIO)
-        cv2.resizeWindow(window_name, processor.getWidth(args.legend), processor.getHeight())
+                frame = processor.processImage(frame, info)
+                if args.markers:
+                    frame = processor.addMarkers(frame, info)
+                if args.legend:
+                    frame = processor.addLegend(frame, info)
 
-        while(True):
-            ret, frame = cap.read()
-            info, lut = cap.info()
+                cv2.imshow(window_name, frame)
 
-            frame = processor.processImage(frame, info)
-            if args.markers:
-                frame = processor.addMarkers(frame, info)
-            if args.legend:
-                frame = processor.addLegend(frame, info)
+                key = cv2.waitKey(1) & 0xFF
+                if key == ord('q'):
+                    break
+                if key == ord('u'):
+                    cap.calibrate()
+                if key == ord('s'):
+                    cv2.imwrite(time.strftime("%Y-%m-%d_%H:%M:%S") + '.png', frame)
 
-            cv2.imshow(window_name, frame)
+        finally:
+            cv2.destroyAllWindows()
 
-            key = cv2.waitKey(1) & 0xFF
-            if key == ord('q'):
-                break
-            if key == ord('u'):
-                cap.calibrate()
-            if key == ord('s'):
-                cv2.imwrite(time.strftime("%Y-%m-%d_%H:%M:%S") + '.png', frame)
 
-    finally:
-        cv2.destroyAllWindows()
+if __name__ == "__main__":
+    main()
