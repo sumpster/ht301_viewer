@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import time
 import numpy as np
 import math
 import cv2
@@ -330,6 +331,15 @@ class HT301:
 
     def calibrate(self):
         self.cap.set(cv2.CAP_PROP_ZOOM, 0x8000)
+
+    def useHighTempRange(self, enable):
+        if enable:
+            self.cap.set(cv2.CAP_PROP_ZOOM, 0x8021) # max 400C
+        else:
+            self.cap.set(cv2.CAP_PROP_ZOOM, 0x8020) # max 120C
+
+        time.sleep(0.5)
+        self.calibrate()
 
     def release(self):
         return self.cap.release()

@@ -82,13 +82,16 @@ class FrameProcessor:
     def _drawTemperatureCentered(self, img, point, dims, T, font, color = (0,0,0)):
         (x, y) = point
         (width, height) = dims
-        t = f"{round(T)}C"
+        if math.isnan(T):
+            text = "Nan"
+        else:
+            text = f"{round(T)}C"
         dsize = 1
 
-        (text_length, text_height) = cv2.getTextSize(t, font, 1, dsize)[0]
+        (text_length, text_height) = cv2.getTextSize(text, font, 1, dsize)[0]
         text_x = x + round((width - text_length) / 2)
         text_y = y + height - round((height - text_height) / 2)
-        cv2.putText(img, t, (text_x, text_y), font, 1, color, dsize, cv2.LINE_8)
+        cv2.putText(img, text, (text_x, text_y), font, 1, color, dsize, cv2.LINE_8)
 
 
     def addLegend(self, frame, info):
@@ -153,6 +156,10 @@ def main():
         dest="scale", default=2, choices=[1, 2, 3], type=int,
         help="scaling factor for video size (default: 2)"
     )
+    parser.add_argument("-m", "--sensor-mode",
+        dest="sensor",  choices=['low','high'], default="low",
+        help="set sensor mode to high low (120°C) or (400°C) temperature (default: low)"
+    )
     parser.add_argument("-r", "--range",
         dest="range",  type=int, nargs=2, metavar=('FROM', 'TO'),
         help="specify visualized temperature range (default: auto)"
@@ -168,6 +175,8 @@ def main():
     args = parser.parse_args()
 
     with ht301_hacklib.HT301(args.device) as cap:
+        cap.useHighTempRange(args.sensor == "high")
+
         processor = FrameProcessor(cap.FRAME_WIDTH, cap.FRAME_HEIGHT, args.scale, args.colormap, args.range)
         try:
             window_name = 'HT301'
