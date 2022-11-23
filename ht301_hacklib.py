@@ -74,17 +74,16 @@ def sub_10001180(fpatmp_, coretmp_, cx):
     l_flt_1000337C_2 = l_flt_1000337C **2
 
 
-    v23 = flt_10003360 * coretmp_**2 + flt_1000335C * coretmp_;
-    v22 = flt_1000339C * fpatmp_**2 + flt_10003398 * fpatmp_ + flt_10003394;
+    v23 = flt_10003360 * coretmp_**2 + flt_1000335C * coretmp_
+    v22 = flt_1000339C * fpatmp_**2 + flt_10003398 * fpatmp_ + flt_10003394
 
     type_ = 0
     if type_ != 0:
-        v2 = 0;
+        v2 = 0
     else:
         v2 = int(390.0 - fpatmp_ * 7.05)
-    v4 = cx - v2;
-    v5 = -v4;
-    p = [];
+    v4 = cx - v2
+    v5 = -v4
     if (Distance_ >= 20):
         distance_c = (20        * 0.85 - 1.125) / 100.
     else:
@@ -120,23 +119,23 @@ def temperatureLut(fpatmp_, meta3):
 
     m3 = meta3.view(dtype=np.dtype(np.uint8))
 
-    v5 = meta3[0];
-    coretmp_ = float(meta3[1]) / 10.0 + ABSOLUTE_ZERO_CELSIUS;
+    v5 = meta3[0]
+    coretmp_ = float(meta3[1]) / 10.0 + ABSOLUTE_ZERO_CELSIUS
 
-    flt_10003360 = f32(m3, 6);
-    flt_1000335C = f32(m3, 10);
-    flt_1000339C = f32(m3, 14);
-    flt_10003398 = f32(m3, 18);
-    flt_10003394 = f32(m3, 22);
+    flt_10003360 = f32(m3, 6)
+    flt_1000335C = f32(m3, 10)
+    flt_1000339C = f32(m3, 14)
+    flt_10003398 = f32(m3, 18)
+    flt_10003394 = f32(m3, 22)
     readParaFromDevFlag = True
     if readParaFromDevFlag:
         if debug > 0: print('m3:', m3[127*2:127*2+30])
-        Fix_ = f32(m3,127*2);
-        refltmp_ = f32(m3,127*2 + 4);
-        airtmp_ = f32(m3,127*2 + 8);
-        Humi_ = f32(m3,127*2 + 12);
-        Emiss_ = f32(m3,127*2 + 16);
-        Distance_ = u16(m3,127*2 + 20);
+        Fix_ = f32(m3,127*2)
+        refltmp_ = f32(m3,127*2 + 4)
+        airtmp_ = f32(m3,127*2 + 8)
+        Humi_ = f32(m3,127*2 + 12)
+        Emiss_ = f32(m3,127*2 + 16)
+        Distance_ = u16(m3,127*2 + 20)
         #readParaFromDevFlag = 0;
 
     if debug > 0:
@@ -160,7 +159,7 @@ def temperatureLut(fpatmp_, meta3):
     if abs(Emiss_) < 0.0001 or abs(flt_10003360) < 0.0001:
         ##bugfix??
         return np.arange(16384.0)
-    return sub_10001180(fpatmp_, coretmp_, v5); #//bug in IDA
+    return sub_10001180(fpatmp_, coretmp_, v5) #//bug in IDA
 
 
 def info(meta, device_strings, width, height):
@@ -168,7 +167,7 @@ def info(meta, device_strings, width, height):
     meta0, meta3 = meta[0], meta[3]
 
     Tfpa_raw = meta0[1]
-    fpatmp_ = 20.0 - (float(Tfpa_raw) - 7800.0) / 36.0;
+    fpatmp_ = 20.0 - (float(Tfpa_raw) - 7800.0) / 36.0
 
     temperature_LUT_C = temperatureLut(fpatmp_, meta3)
 
@@ -232,7 +231,7 @@ def device_info(meta):
     m3chr = list(meta3.view(dtype=np.dtype(np.uint8)))
     idx = 48
     device_strings = []
-    for i in range(6):
+    for _ in range(6):
         idx, s = findString(m3chr, idx)
         device_strings.append(s)
     if debug > 0: print('device_info:', device_strings)
@@ -270,6 +269,7 @@ class HT301:
         #? enable thermal data - not needed
         #self.cap.set(cv2.CAP_PROP_ZOOM, 0x8020)
         self.frame_raw = None
+        self.frame = None
 
     def __enter__(self):
         return self

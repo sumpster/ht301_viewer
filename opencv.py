@@ -184,8 +184,8 @@ def main():
             cv2.resizeWindow(window_name, processor.getWidth(args.legend), processor.getHeight())
 
             while(True):
-                ret, frame = cap.read()
-                info, lut = cap.info()
+                _, frame = cap.read()
+                info, _ = cap.info()
 
                 frame = processor.processImage(frame, info)
                 if args.markers:
