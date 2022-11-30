@@ -1,60 +1,33 @@
-# ht301_hacklib
-ht-301 thermal camera opencv python lib.
+# ht301_viewer
 
-Supported thermal cameras:
-- Hti HT-301
-- Xtherm T3S, thanks to Angel-1024!
+This clone is for working on:
+* support for high temperature mode of HTI-301 (400°C max instead of 120°C in default mode)
+* opencv version with command line configuration options.
 
-It's a very simple hacked together lib, might be useful for somebody,  
-uses `matplotlib` which is a little bit on the slow side,  
-or pure `opencv` - much faster but with less features.
+State of high temp mode:
+* Working: high temperature mode can be activated (-m high)
+* Working: switch back to low temperature mode (-m low) without reset
+* Open: Correctness of temperature readings and used type switch in hacklib.
 
-Tested on ubuntu 20.04:
-
-```
-$ ./pyplot.py
-keys:
-    'h'      - help
-    'q'      - quit
-    ' '      - pause, resume
-    'd'      - set diff
-    'x','c'  - enable/disable diff, enable/disable annotation diff
-    'f'      - full screen
-    'u'      - calibrate
-    't'      - draw min, max, center temperature
-    'e'      - remove user temperature annotations
-    'w'      - save to file date.png
-    'r'      - save raw data to file date.npy
-    ',', '.' - change color map
-    'a', 'z' - auto exposure on/off, auto exposure type
-    left, right, up, down - set exposure limits
-
-mouse:
-    left  button - add Region Of Interest (ROI)
-    right button - add user temperature annotation
-```
-![pyplot output](docs/pyplot-output1.png)
-![pyplot output](docs/pyplot-output2.png)
-
-View saved ('r' key) raw data file:
-```
-$ ./pyplot.py 2022-09-11_18:49:07.npy
-```
-
-Opencv version:
+Opencv:
 ```
 $ ./opencv.py -h
-usage: opencv.py [-h] [-c COLORMAP] [-s {1,2,3}] [-r FROM TO] [-nl] [-nm]
+usage: opencv.py [-h] [-d DEVICE] [-c COLORMAP] [-s {1,2,3}] [-m {low,high}] [-r FROM TO] [-nl] [-nm] [--debug-dump-lut]
 
-optional arguments:
+options:
   -h, --help            show this help message and exit
+  -d DEVICE, --device DEVICE
+                        video device to use (default: auto)
   -c COLORMAP, --colormap COLORMAP
-                        color map used for thermal gradient (bone, inferno, jet, turbo, ...)
+                        cv2 color map used for thermal gradient (default: inferno)
   -s {1,2,3}, --scale {1,2,3}
-                        scaling factor for video size (default 2)
+                        scaling factor for video size (default: 2)
+  -m {low,high}, --sensor-mode {low,high}
+                        set sensor mode to low (120°C) or high (400°C) temperature (default: low)
   -r FROM TO, --range FROM TO
-                        specify visualized temperature range (default auto)
+                        specify visualized temperature range (default: auto)
   -nl, --no-legend      hide color map legend
   -nm, --no-markers     hide min/max/center temperature markers
-  ```
+  --debug-dump-lut      Debugging: Dump temperature LUT used to convert raw data to celcius to lut_dump.csv after 20 frames.
+```
 ![opencv output](docs/opencv-output.png)

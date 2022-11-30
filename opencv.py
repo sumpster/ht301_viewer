@@ -140,6 +140,10 @@ class FrameProcessor:
         self._drawMarker(frame, self._scalePoint(info['Tcenter_point'], self.scale), info['Tcenter_C'])
         return frame
 
+def dumpLUT(lut):
+    with open("lut_dump.csv", "w") as f:
+        for v in lut:
+            print(v, file=f)
 
 def main():
     parser = ArgumentParser()
@@ -158,7 +162,7 @@ def main():
     )
     parser.add_argument("-m", "--sensor-mode",
         dest="sensor",  choices=['low','high'], default="low",
-        help="set sensor mode to high low (120°C) or (400°C) temperature (default: low)"
+        help="set sensor mode to low (120°C) or high (400°C) temperature (default: low)"
     )
     parser.add_argument("-r", "--range",
         dest="range",  type=int, nargs=2, metavar=('FROM', 'TO'),
@@ -172,6 +176,11 @@ def main():
         action="store_false", dest="markers", default=True,
         help="hide min/max/center temperature markers"
     )
+
+    parser.add_argument("--debug-dump-lut",
+        action="store_true", dest="debug_dump_lut", default=False,
+        help="Debugging: Dump temperature LUT used to convert raw data to celcius to lut_dump.csv after 20 frames."
+    )
     args = parser.parse_args()
 
     with ht301_hacklib.HT301(args.device) as cap:
@@ -180,12 +189,14 @@ def main():
         processor = FrameProcessor(cap.FRAME_WIDTH, cap.FRAME_HEIGHT, args.scale, args.colormap, args.range)
         try:
             window_name = 'HT301'
+            frame_counter = 0
             cv2.namedWindow(window_name, cv2.WINDOW_KEEPRATIO)
             cv2.resizeWindow(window_name, processor.getWidth(args.legend), processor.getHeight())
 
             while(True):
                 _, frame = cap.read()
-                info, _ = cap.info()
+                info, lut = cap.info()
+                frame_counter += 1
 
                 frame = processor.processImage(frame, info)
                 if args.markers:
@@ -194,6 +205,9 @@ def main():
                     frame = processor.addLegend(frame, info)
 
                 cv2.imshow(window_name, frame)
+
+                if args.debug_dump_lut and frame_counter == 20:
+                    dumpLUT(lut)
 
                 key = cv2.waitKey(1) & 0xFF
                 if key == ord('q'):

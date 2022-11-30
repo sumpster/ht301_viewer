@@ -30,7 +30,7 @@ ABSOLUTE_ZERO_CELSIUS = -273.15
 #fpa - focal-plane array (sensor)
 
 
-def sub_10001180(fpatmp_, coretmp_, cx):
+def sub_10001180(fpatmp_, coretmp_, cx, high_range = False):
     global Distance_, refltmp_, airtmp_, Humi_, Emiss_
     global flt_1000335C, flt_10003360, flt_1000339C, flt_10003394, flt_10003398
 
@@ -77,8 +77,7 @@ def sub_10001180(fpatmp_, coretmp_, cx):
     v23 = flt_10003360 * coretmp_**2 + flt_1000335C * coretmp_
     v22 = flt_1000339C * fpatmp_**2 + flt_10003398 * fpatmp_ + flt_10003394
 
-    type_ = 0
-    if type_ != 0:
+    if high_range:
         v2 = 0
     else:
         v2 = int(390.0 - fpatmp_ * 7.05)
@@ -108,7 +107,7 @@ def sub_10001180(fpatmp_, coretmp_, cx):
 
 
 
-def temperatureLut(fpatmp_, meta3):
+def temperatureLut(fpatmp_, meta3, high_range=False):
 
     global Fix_, Distance_, refltmp_, airtmp_, Humi_, Emiss_
     global fpaavg_, orgavg_, coretmp_ 
@@ -159,17 +158,17 @@ def temperatureLut(fpatmp_, meta3):
     if abs(Emiss_) < 0.0001 or abs(flt_10003360) < 0.0001:
         ##bugfix??
         return np.arange(16384.0)
-    return sub_10001180(fpatmp_, coretmp_, v5) #//bug in IDA
+    return sub_10001180(fpatmp_, coretmp_, v5, high_range) #//bug in IDA
 
 
-def info(meta, device_strings, width, height):
+def info(meta, device_strings, width, height, high_range=False):
 
     meta0, meta3 = meta[0], meta[3]
 
     Tfpa_raw = meta0[1]
     fpatmp_ = 20.0 - (float(Tfpa_raw) - 7800.0) / 36.0
 
-    temperature_LUT_C = temperatureLut(fpatmp_, meta3)
+    temperature_LUT_C = temperatureLut(fpatmp_, meta3, high_range)
 
     fpaavg_  = meta0[0]
 #   Tfpa_raw = meta0[1]
@@ -270,6 +269,7 @@ class HT301:
         #self.cap.set(cv2.CAP_PROP_ZOOM, 0x8020)
         self.frame_raw = None
         self.frame = None
+        self.high_range = False
 
     def __enter__(self):
         return self
@@ -327,17 +327,19 @@ class HT301:
 
     def info(self):
         width, height = self.frame.shape
-        return info(self.meta, self.device_strings, height, width)
+        return info(self.meta, self.device_strings, height, width, self.high_range)
 
     def calibrate(self):
         self.cap.set(cv2.CAP_PROP_ZOOM, 0x8000)
 
+    # Experimental feature, use with caution. Temperatures reported in high temp mode seem to be too high at lower end.
     def useHighTempRange(self, enable):
         if enable:
             self.cap.set(cv2.CAP_PROP_ZOOM, 0x8021) # max 400C
         else:
             self.cap.set(cv2.CAP_PROP_ZOOM, 0x8020) # max 120C
 
+        self.high_range = enable
         time.sleep(0.5)
         self.calibrate()
 
